@@ -391,7 +391,7 @@ const getUserChannelProfile  = asyncHandler(async () =>{
                 },
                 isSubscribed:{
                     $cond:{
-                        if:{$in[req.user?._id,"$Subscribers.subscriber"]},
+                        if:{$in:[req.user?._id,"$Subscribers.subscriber"]},
                         then: true,
                         else: false
                     }
@@ -423,7 +423,55 @@ const getUserChannelProfile  = asyncHandler(async () =>{
         new ApiResponse(200,channel[0],"User channel fetched successfully")
     )
 })
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+    {
+        $match:{
+            _id: new mongoose.Types.ObjectId(req.user?._id)
+        }
+    },
+    {
+        $lookup:{
+            from:"videos",
+            localField:"watchHistory",
+            foreignField:"_id",
+            as:"watchHistory",
+            pipeline:[
+                {
+                    $lookup:{
+                        from:"users",
+                        localField:"owner",
+                        foreignField:"_id",
+                        as:owner,
+                        pipeline:[
+                            {
+                                $project:{
+                                    fullname:1,
+                                    username:1,
+                                    avatar:1
+                                }
+                            },
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    {
+        $addFields:{
+            owner:{
+                $first:"$owner"
+            }
+        }
+    }
+    ])
 
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,user[0],"Watch history fetched successfully")
+    )
+})
 export {
     registerUser,
     logInUser,
@@ -434,5 +482,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 }
