@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { options } from "../constants.js";
+import jwt from "jsonwebtoken"
 
 
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -191,7 +192,7 @@ const refereshAccessToken = asyncHandler(async (req, res) => {
     }
 
     try {
-        const decodedToken = jwt.varify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
         const user = await User.findById(decodedToken._id)
 
@@ -231,9 +232,15 @@ const refereshAccessToken = asyncHandler(async (req, res) => {
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     const { oldPassword, newPassword } = req.body
 
-    const user = User.findById(req.user?._id)
+    const user = await User.findById(req.user?._id)
 
-    const isPasswordValid = await user.isPasswordCorrect(oldPassword)
+    if (!user) {
+        throw new ApiError(400, "User not authorized")
+    }
+
+    console.log(user)
+
+   const isPasswordValid = await user.isPasswordCorrect(oldPassword)
 
     if (!isPasswordValid) {
         throw new ApiError(400, "Old passwor is invalid")
